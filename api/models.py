@@ -89,9 +89,10 @@ class UserProfile(models.Model):
         super().save(*args, **kwargs)
 
     def calculate_daily_carbon_footprint(self):
-        user=self.user
+        user = self.user
         if user is None:
             raise ValueError("User instance is None. Cannot calculate carbon footprint.")
+
         # Fetch user data
         transportation = Transportation.objects.filter(user=user).first()
         home_energy = HomeEnergyUsage.objects.filter(user=user).first()
@@ -100,28 +101,38 @@ class UserProfile(models.Model):
         waste_management = WasteManagement.objects.filter(user=user).first()
         lifestyle_and_habits = LifestyleAndHabits.objects.filter(user=user).first()
 
-        print(transportation.daily_commute)
-
         # 1. Transportation Emissions
         commute_emissions = 0
         if transportation.daily_commute == 'CAR':
-            commute_emissions = transportation.commute_distance * 0.404  # kg CO₂/mile
+            commute_emissions = transportation.commute_distance * 0.251  # kg CO₂/km
         elif transportation.daily_commute == 'PUBLIC_TRANSPORT':
-            commute_emissions = transportation.commute_distance * 0.104  # kg CO₂/mile
+            commute_emissions = transportation.commute_distance * 0.065  # kg CO₂/km
         elif transportation.daily_commute == 'BICYCLE' or transportation.daily_commute == 'WALKING':
-            commute_emissions = 0  # No emissions for these options
+            commute_emissions = 0  # No emissions
         elif transportation.daily_commute == 'CARPOOL':
-            commute_emissions = transportation.commute_distance * 0.202  # Average emissions
+            commute_emissions = transportation.commute_distance * 0.126  # kg CO₂/km
 
-        air_travel_emissions = (transportation.air_travel * 250) / 365  # Short-haul
+        # Air Travel Emissions
+        air_travel_emissions = 0
+        if transportation.air_travel < 1500:
+            air_travel_emissions = 250 / 365
+        elif 1500 <= transportation.air_travel <= 4000:
+            air_travel_emissions = 500 / 365
+        else:
+            air_travel_emissions = 1000 / 365
 
         total_transportation_emissions = commute_emissions + air_travel_emissions
 
         # 2. Home Energy Usage Emissions
-        electricity_emissions = (home_energy.monthly_consumption * 0.92) / 30  # kg CO₂/day
-        gas_emissions = (home_energy.monthly_consumption * 5.3) / 30  # kg CO₂/day
+        energy_source_emission_factor = {
+            'GRID_ELECTRICITY': 0.92,
+            'SOLAR': 0,
+            'HYDROELECTRIC': 0,
+            'NATURAL_GAS': 5.3,
+            'OTHER': 4
+        }.get(home_energy.energy_source, 0)
 
-        total_home_energy_emissions = electricity_emissions + gas_emissions
+        total_home_energy_emissions = (home_energy.monthly_consumption * energy_source_emission_factor) / 30
 
         # 3. Food and Diet Emissions
         diet_emissions = {
@@ -132,7 +143,16 @@ class UserProfile(models.Model):
             'MEAT_HEAVY': 7.0
         }.get(food_and_diet.diet_type, 5.0)
 
-        total_food_emissions = diet_emissions
+        # Adjust based on food sourcing sustainability
+        food_source_adjustment = {
+            'ALWAYS': -0.5,
+            'OFTEN': -0.3,
+            'SOMETIMES': 0,
+            'RARELY': 0.3,
+            'NEVER': 0.5
+        }.get(food_and_diet.food_source, 0)
+
+        total_food_emissions = diet_emissions + food_source_adjustment
 
         # 4. Shopping and Goods Emissions
         clothing_emissions = {
@@ -149,31 +169,48 @@ class UserProfile(models.Model):
             'YEARLY': 0.05
         }.get(shopping_and_goods.general_purchases, 0)
 
-        total_shopping_emissions = clothing_emissions + general_purchases_emissions
+        # Adjust based on recycling habits
+        recycling_adjustment = {
+            'MOST': -0.3,
+            'ABOUT_HALF': -0.15,
+            'SOME': 0.15,
+            'NONE': 0.3
+        }.get(shopping_and_goods.recycling, 0)
+
+        total_shopping_emissions = clothing_emissions + general_purchases_emissions + recycling_adjustment
 
         # 5. Waste Management Emissions
         waste_emission_values = {
             'DAILY': 1.0,
-            'EVERY_FEW': 0.5,
+            'EVERY_FEW_DAYS': 0.5,
             'WEEKLY': 0.2
         }
 
         waste_emissions = waste_emission_values.get(waste_management.waste_disposal, 0)
 
+        # Adjust for composting
+        composting_adjustment = {
+            'YES': -0.3,
+            'PLANNING_TO': -0.15,
+            'NO': 0
+        }.get(waste_management.composting, 0)
+
+        total_waste_emissions = waste_emissions + composting_adjustment
+
         # 6. Lifestyle and Habits Emissions
         energy_saving_emissions = {
-            'ALWAYS': -1,  # Negative indicates savings
+            'ALWAYS': -1.0,
             'OFTEN': -0.5,
             'SOMETIMES': 0,
             'RARELY': 0.5,
-            'NEVER': 1
+            'NEVER': 1.0
         }.get(lifestyle_and_habits.energy_saving, 0)
 
         water_usage_emissions = {
             'CONSCIOUS': -0.5,
             'SOMETIMES': 0,
             'RARELY': 0.5,
-            'NEVER': 1
+            'NEVER': 1.0
         }.get(lifestyle_and_habits.water_usage, 0)
 
         total_lifestyle_emissions = energy_saving_emissions + water_usage_emissions
@@ -184,9 +221,11 @@ class UserProfile(models.Model):
             total_home_energy_emissions +
             total_food_emissions +
             total_shopping_emissions +
-            waste_emissions +
+            total_waste_emissions +
             total_lifestyle_emissions
         )
+
+
 
         self.daily_carbon_footprint = total_daily_footprint
         self.yearly_carbon_footprint = self.daily_carbon_footprint*365
@@ -194,6 +233,6 @@ class UserProfile(models.Model):
         self.home_energy_emissions = total_home_energy_emissions
         self.food_emissions = total_food_emissions
         self.shopping_emissions = total_shopping_emissions
-        self.waste_emissions = waste_emissions
+        self.waste_emissions = total_waste_emissions
         self.lifestyle_emissions = total_lifestyle_emissions
 

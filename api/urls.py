@@ -7,7 +7,8 @@ from rest_framework.routers import DefaultRouter
 # JWT Token setup
 urlpatterns = [
     path('token/',TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/',views.CustomTokenRefreshView.as_view(), name='token_refresh')
+    path('token/refresh/',views.CustomTokenRefreshView.as_view(), name='token_refresh'),
+    path('token/tokenuser/',views.gettokenuser, name='token_user')
 ]
 
 router = DefaultRouter()

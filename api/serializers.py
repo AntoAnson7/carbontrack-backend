@@ -5,11 +5,10 @@ from django.contrib.auth.models import User
 from .models import FoodAndDiet,ShoppingAndGoods,LifestyleAndHabits,WasteManagement,HomeEnergyUsage,Transportation,UserProfile
 
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
     class Meta:
         model = User
-        fields = ['username','email','password']
-        read_only_fields = ['date_joined','is_active']
-        write_only_fields = ['password']
+        fields = ['username','email','password','date_joined','is_active']
 
     def create(self, validated_data):
         user = User(

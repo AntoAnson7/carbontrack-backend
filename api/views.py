@@ -196,3 +196,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             serializer.save(user=user)
         else:
             raise ValidationError("User is not authenticated.")
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def gettokenuser(request):
+    user = request.user
+    return Response({"user":UserSerializer(user).data},status=status.HTTP_200_OK)
