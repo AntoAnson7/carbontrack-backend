@@ -236,3 +236,26 @@ class UserProfile(models.Model):
         self.waste_emissions = total_waste_emissions
         self.lifestyle_emissions = total_lifestyle_emissions
 
+
+class CarbonOffsetProject(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    location = models.CharField(max_length=255)
+    offset_potential_tons = models.FloatField()
+    category = models.CharField(max_length=100)
+    benefits = models.JSONField()  # List of benefits
+    activities = models.JSONField()  # List of activities
+    link = models.URLField()
+    image_url = models.URLField()
+
+    def __str__(self):
+        return self.name
+
+class Goal(models.Model):
+    user_profile = models.ForeignKey(User, on_delete=models.CASCADE, related_name="goals")
+    daily_goal = models.FloatField(help_text="User's daily carbon footprint goal (in kg CO₂)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user_profile.user.username}'s Goal - {self.daily_goal} kg CO₂"

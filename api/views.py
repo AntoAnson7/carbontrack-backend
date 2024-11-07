@@ -10,10 +10,11 @@ from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
-from .models import FoodAndDiet,ShoppingAndGoods,LifestyleAndHabits,WasteManagement,HomeEnergyUsage,Transportation,UserProfile
+from .models import FoodAndDiet,ShoppingAndGoods,LifestyleAndHabits,WasteManagement,HomeEnergyUsage,Transportation,UserProfile,CarbonOffsetProject
 from django.shortcuts import get_object_or_404
-from .serializers import TransportationSerializer,HomeEnergyUsageSerializer,FoodAndDietSerializer,WasteManagementSerializer,ShoppingAndGoodsSerializer,LifestyleAndHabitsSerializer
+from .serializers import TransportationSerializer,HomeEnergyUsageSerializer,FoodAndDietSerializer,WasteManagementSerializer,ShoppingAndGoodsSerializer,LifestyleAndHabitsSerializer,CarbonOffsetProjectSerializer
 from rest_framework.serializers import ValidationError
+from rest_framework.views import APIView
 
 #! User test route
 class UserViewset(viewsets.ModelViewSet):
@@ -197,8 +198,65 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         else:
             raise ValidationError("User is not authenticated.")
 
+class UserProfileDataView(APIView):
+    permission_classes = [IsAuthenticated] 
+
+    def get(self, request):
+        user = request.user
+
+        transportation_data = Transportation.objects.filter(user=user).first()  # Adjust if needed
+        energy_data = HomeEnergyUsage.objects.filter(user=user).first()
+        food_diet_data = FoodAndDiet.objects.filter(user=user).first()
+        waste_management_data = WasteManagement.objects.filter(user=user).first()
+        lifestyle_data = LifestyleAndHabits.objects.filter(user=user).first()
+        shopping_goods_data = ShoppingAndGoods.objects.filter(user=user).first()
+
+        transportation_serializer = TransportationSerializer(transportation_data)
+        energy_serializer = HomeEnergyUsageSerializer(energy_data)
+        food_diet_serializer = FoodAndDietSerializer(food_diet_data)
+        waste_management_serializer = WasteManagementSerializer(waste_management_data)
+        lifestyle_serializer = LifestyleAndHabitsSerializer(lifestyle_data)
+        shopping_goods_serializer = ShoppingAndGoodsSerializer(shopping_goods_data)
+
+        user_data = {
+            'transportation': transportation_serializer.data,
+            'homeEnergy': energy_serializer.data,
+            'foodDiet': food_diet_serializer.data,
+            'wasteManagement': waste_management_serializer.data,
+            'lifestyleHabits': lifestyle_serializer.data,
+            'shoppingGoods': shopping_goods_serializer.data,
+        }
+
+        return Response(user_data)
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def gettokenuser(request):
     user = request.user
     return Response({"user":UserSerializer(user).data},status=status.HTTP_200_OK)
+
+
+class CarbonOffsetProjectViewSet(viewsets.ModelViewSet):
+    queryset = CarbonOffsetProject.objects.all()
+    serializer_class = CarbonOffsetProjectSerializer
+    permission_classes = [IsAuthenticated]
+
+class SetGoalView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            # Fetch the user profile for the authenticated user
+            profile = UserProfile.objects.get(user=request.user)
+            goal = request.data.get('goal')
+
+            if goal is not None:
+                profile.goal = goal  # Update the goal field
+                profile.save()  # Save changes to the database
+
+                return Response({"message": "Goal updated successfully."}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Goal value is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        except UserProfile.DoesNotExist:
+            return Response({"error": "User profile not found."}, status=status.HTTP_404_NOT_FOUND)

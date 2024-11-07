@@ -2,7 +2,7 @@ from dataclasses import field
 from pyexpat import model
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import FoodAndDiet,ShoppingAndGoods,LifestyleAndHabits,WasteManagement,HomeEnergyUsage,Transportation,UserProfile
+from .models import FoodAndDiet,ShoppingAndGoods,LifestyleAndHabits,WasteManagement,HomeEnergyUsage,Transportation,UserProfile,CarbonOffsetProject
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -70,6 +70,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'waste_emissions',           
             'lifestyle_emissions',       
             'created_at',                
-            'modified_at',               
+            'modified_at',  
+            'goal'             
         ]
         read_only_fields = ['id', 'created_at', 'modified_at','user'] 
+
+class CarbonOffsetProjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CarbonOffsetProject
+        fields = [
+            'id', 'name', 'description', 'location', 'offset_potential_tons', 
+            'category', 'benefits', 'activities', 'link', 'image_url'
+        ]
