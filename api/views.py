@@ -10,9 +10,8 @@ from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
-from .models import FoodAndDiet,ShoppingAndGoods,LifestyleAndHabits,WasteManagement,HomeEnergyUsage,Transportation,UserProfile,CarbonOffsetProject
-from django.shortcuts import get_object_or_404
-from .serializers import TransportationSerializer,HomeEnergyUsageSerializer,FoodAndDietSerializer,WasteManagementSerializer,ShoppingAndGoodsSerializer,LifestyleAndHabitsSerializer,CarbonOffsetProjectSerializer
+from .models import FoodAndDiet,Goal,ShoppingAndGoods,LifestyleAndHabits,WasteManagement,HomeEnergyUsage,Transportation,UserProfile,CarbonOffsetProject,EnrolledProjects
+from .serializers import TransportationSerializer,HomeEnergyUsageSerializer,FoodAndDietSerializer,WasteManagementSerializer,ShoppingAndGoodsSerializer,LifestyleAndHabitsSerializer,CarbonOffsetProjectSerializer,GoalSerializer,EnrolledProjectsSerializer
 from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 
@@ -239,24 +238,43 @@ def gettokenuser(request):
 class CarbonOffsetProjectViewSet(viewsets.ModelViewSet):
     queryset = CarbonOffsetProject.objects.all()
     serializer_class = CarbonOffsetProjectSerializer
+    permission_classes = [AllowAny]
+
+class GoalViewSet(viewsets.ModelViewSet):
+    queryset = Goal.objects.all()
+    serializer_class = GoalSerializer
     permission_classes = [IsAuthenticated]
 
-class SetGoalView(APIView):
+    def get_queryset(self):
+        return Goal.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class EnrolledProjectsView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            enrolled_projects = EnrolledProjects.objects.get(user=request.user)
+            serializer = EnrolledProjectsSerializer(enrolled_projects)
+            return Response(serializer.data)
+        except EnrolledProjects.DoesNotExist:
+            return Response({"detail": "No enrolled projects found for this user."}, status=status.HTTP_404_NOT_FOUND)
 
     def post(self, request):
-        try:
-            # Fetch the user profile for the authenticated user
-            profile = UserProfile.objects.get(user=request.user)
-            goal = request.data.get('goal')
+           project_id = request.data.get('project_id')
+           user = request.user 
 
-            if goal is not None:
-                profile.goal = goal  # Update the goal field
-                profile.save()  # Save changes to the database
+           try:
+               project = CarbonOffsetProject.objects.get(id=project_id)
+           except CarbonOffsetProject.DoesNotExist:
+               return Response({"detail": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
 
-                return Response({"message": "Goal updated successfully."}, status=status.HTTP_200_OK)
-            else:
-                return Response({"error": "Goal value is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        except UserProfile.DoesNotExist:
-            return Response({"error": "User profile not found."}, status=status.HTTP_404_NOT_FOUND)
+           enrolled_project, created = EnrolledProjects.objects.get_or_create(user=user)
+           if project not in enrolled_project.projects.all():
+               enrolled_project.projects.add(project)
+               enrolled_project.save()
+               return Response({"detail": "Project successfully enrolled."}, status=status.HTTP_201_CREATED)
+           else:
+               return Response({"detail": "You are already enrolled in this project."}, status=status.HTTP_400_BAD_REQUEST)

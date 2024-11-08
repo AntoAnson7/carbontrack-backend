@@ -1,8 +1,9 @@
 from dataclasses import field
 from pyexpat import model
+from statistics import mode
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import FoodAndDiet,ShoppingAndGoods,LifestyleAndHabits,WasteManagement,HomeEnergyUsage,Transportation,UserProfile,CarbonOffsetProject
+from .models import EnrolledProjects, FoodAndDiet, Goal,ShoppingAndGoods,LifestyleAndHabits,WasteManagement,HomeEnergyUsage,Transportation,UserProfile,CarbonOffsetProject
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -70,8 +71,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'waste_emissions',           
             'lifestyle_emissions',       
             'created_at',                
-            'modified_at',  
-            'goal'             
+            'modified_at'           
         ]
         read_only_fields = ['id', 'created_at', 'modified_at','user'] 
 
@@ -82,3 +82,15 @@ class CarbonOffsetProjectSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'location', 'offset_potential_tons', 
             'category', 'benefits', 'activities', 'link', 'image_url'
         ]
+
+class GoalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Goal
+        fields = ['id', 'user', 'daily_goal', 'created_at', 'updated_at']
+        read_only_fields = ['user', 'created_at', 'updated_at']
+
+class EnrolledProjectsSerializer(serializers.ModelSerializer):
+    projects = CarbonOffsetProjectSerializer(many=True)
+    class Meta:
+        model = EnrolledProjects
+        fields = ['user', 'projects', 'date_enrolled']

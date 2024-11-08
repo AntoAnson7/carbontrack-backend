@@ -22,6 +22,7 @@ router.register(r'wastemanagement', views.WasteManagementViewset,basename='waste
 router.register(r'lifestylehabits', views.LifestyleAndHabitsViewset,basename='lifestylehabits')
 router.register(r'shoppinggoods', views.ShoppingAndGoodsViewset,basename='shoppinggoods')
 router.register(r'offsetprojects', views.CarbonOffsetProjectViewSet,basename='offset_projects')
+router.register(r'goals', views.GoalViewSet,basename='goals')
 
 # Router
 urlpatterns += [
@@ -35,5 +36,5 @@ urlpatterns+=[
     path('register/',views.register_user, name='register_user'),
     path('login/',views.login_user, name='login_user'),
     path('survey_data/', views.UserProfileDataView.as_view(), name='user-profile-data'),
-    path('setgoal/', views.SetGoalView.as_view(), name='set_user_goal')
+    path('enroll/', views.EnrolledProjectsView.as_view(), name='enrolled-projects'),
 ]

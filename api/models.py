@@ -252,10 +252,13 @@ class CarbonOffsetProject(models.Model):
         return self.name
 
 class Goal(models.Model):
-    user_profile = models.ForeignKey(User, on_delete=models.CASCADE, related_name="goals")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="goals")
     daily_goal = models.FloatField(help_text="User's daily carbon footprint goal (in kg CO₂)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.user_profile.user.username}'s Goal - {self.daily_goal} kg CO₂"
+
+class EnrolledProjects(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enrolled_projects')
+    projects = models.ManyToManyField(CarbonOffsetProject, related_name='enrolled_users')
+    date_enrolled = models.DateTimeField(auto_now_add=True)
